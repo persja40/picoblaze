@@ -1,0 +1,64 @@
+VHDL "ROM_form.vhd", "proj.vhd"
+MEM "proj.mem"
+
+leds_0 DSIO $00
+
+int_mask DSOUT $E1
+int_status DSIO $E0
+
+ps2_out DSOUT $70
+ps2 DSIN $70
+ps2_int_edge DSIO $71
+ps2_int_value DSIO $72
+ps2_int_mask DSIO $73
+
+dane:
+LOAD s1, 0
+LOAD s0, %00000011
+OUT s0, leds_0
+
+ustawienieprzerwan:
+LOAD s0, %00000010
+OUT s0, int_mask
+
+ustawienieczytania:
+LOAD s0, %11
+OUT s0, ps2_out
+LOAD s0, %01
+OUT s0, ps2_int_mask
+LOAD s0, %01
+OUT s0, ps2_int_edge
+
+LOAD s5, 10
+
+EINT
+
+koniec:
+;LOAD s0, %00000011
+;OUT s0, leds_0
+JUMP koniec
+
+zero: SL0 s1
+	JUMP dalej
+
+jeden: SL1 s1
+	JUMP dalej
+
+interrupt:
+	;LOAD s0, %00011000
+	;OUT s0, leds_0
+	SUB s5, 1
+	JUMP Z, koniecint
+	IN s0, ps2	
+	TEST s0, %10
+	JUMP Z, zero
+	JUMP NZ, jeden
+	dalej:
+	OUT s1, leds_0
+	koniecint:
+	LOAD sF, 0
+	OUT sF, int_status
+	reti enable
+
+ORG $3FF
+JUMP interrupt
