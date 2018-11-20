@@ -1,16 +1,20 @@
 VHDL "ROM_form.vhd", "proj.vhd"
 MEM "proj.mem"
 
-leds_0 DSIO $00
+leds_0 DSIO $00 ;port ledy
 
-int_mask DSOUT $E1
-int_status DSIO $E0
+int_mask DSOUT $E1 ;maska przerwan
+int_status DSIO $E0 ;status przerwan
 
-ps2_out DSOUT $70
-ps2 DSIN $70
-ps2_int_edge DSIO $71
-ps2_int_value DSIO $72
-ps2_int_mask DSIO $73
+ps2_out DSOUT $70 ;port wyjsciowy ps2
+ps2 DSIN $70 ;port wejsciowy ps2
+ps2_int_edge DSIO $71 ;wybor typu przerwan
+ps2_int_value DSIO $72 ;wybor zbocza przerwan
+ps2_int_mask DSIO $73 ;maska przerwan
+
+
+LOAD s4, 0 ;dane dotyczace stanu ramki ps/2
+LOAD s5, 0 ;czy przycisk jest puszczany
 
 dane:
 LOAD s1, 0
@@ -18,15 +22,15 @@ LOAD s0, %00000011
 OUT s0, leds_0
 
 ustawienieprzerwan:
-LOAD s0, %00000010
+LOAD s0, %00000010 ;zaladowanie przerwan z ps/2
 OUT s0, int_mask
 
 ustawienieczytania:
 LOAD s0, %11
 OUT s0, ps2_out
-LOAD s0, %01
+LOAD s0, %01 ;zrodlo przerwan z linii ps_clk
 OUT s0, ps2_int_mask
-LOAD s0, %01
+LOAD s0, %01 ;zbocze dla ps/2, chyba trzeba zmienic na 00
 OUT s0, ps2_int_edge
 
 LOAD s5, 10
@@ -34,31 +38,142 @@ LOAD s5, 10
 EINT
 
 koniec:
-;LOAD s0, %00000011
-;OUT s0, leds_0
 JUMP koniec
 
-zero: SL0 s1
+zero: SL0 s1 ;otrzymanie 1 z ps_data 
 	JUMP dalej
 
-jeden: SL1 s1
+jeden: SL1 s1 ;otrzymanie 0 z ps_data
+	JUMP dalej
+	
+bitstartu: ;obsluga bitu startu
+	TEST s0, %10
+	JUMP Z, bitstartuOk
+	JUMP NZ, koniecint
+	
+bitstartuOk:
+	ADD s4, 1
+	JUMP koniecint
+	
+bitstopu: ;obsluga bitu stopu
+	TEST s0, %10
+	JUMP NZ, bitstopuOk
+	JUMP Z, koniecint
+	
+bitstopuOk:
+	LOAD s4, 0
+	OUT s1, leds_0
+	TEST s5, %1
+	JUMP NZ, koniecpuszczania
+	COMP s1, $F0 ;jezeli kod F0, to znaczy ze klawisz jest puszczony
+	JUMP Z, puszczamy
+	COMP s1, $1C ;scancode litery A
+	JUMP Z, A
+	COMP s1, $32
+	JUMP Z, B
+	COMP s1, $21
+	JUMP Z, C
+	COMP s1, $23
+	JUMP Z, D
+	COMP s1, $24
+	JUMP Z, E
+	COMP s1, $2B
+	JUMP Z, F
+	COMP s1, $34
+	JUMP Z, G
+	COMP s1, $33
+	JUMP Z, H
+	JUMP koniecint
+	
+puszczamy:
+	LOAD s5, 1
+	JUMP koniecint
+
+wyswietl:
+	;wyswietlenie rejestru s6 na ekran
+	JUMP koniecint
+	
+A:
+	LOAD s6, $41 ;zaladowanie litery A w ascii do rejestru s6
+	JUMP wyswietl
+	
+B:
+	LOAD s6, $42
+	JUMP koniecint
+	
+C:
+	LOAD s6, $43
+	JUMP koniecint
+	
+D:
+	LOAD s6, $44
+	JUMP koniecint
+	
+E:
+	LOAD s6, $45
+	JUMP koniecint
+	
+F:
+	LOAD s6, $46
+	JUMP koniecint
+	
+G:
+	LOAD s6, $47
+	JUMP koniecint
+	
+H:
+	LOAD s6, $41
+	JUMP koniecint
+	
+	
+koniecpuszczania:
+	LOAD s5, 0
+	JUMP koniecint
+	
+parity: ;obsluga bitu parzystosci
+	TEST s1, FF
+	JUMP C parityone
+	JUMP NC parityzero
+	
+parityone:
+	TEST s0, %10
+	JUMP NZ, parityOk
+	JUMP Z, koniecint
+	
+parityzero:
+	TEST s0, %10
+	JUMP Z, parityOk
+	JUMP NZ, koniecint	
+
+parityOk:
 	JUMP dalej
 
 interrupt:
-	;LOAD s0, %00011000
-	;OUT s0, leds_0
-	SUB s5, 1
-	JUMP Z, koniecint
-	IN s0, ps2	
+
+	IN s0, ps2 ;pobranie bitu 
+	
+	COMP s4, 0 ;jezeli to pierwszy bit ramki, to obsluga bitu startu
+	JUMP Z, bitstartu
+	
+	COMP s4, 10 ;jezeli to 11 bit ramki, to obsluga bitu stopu
+	JUMP Z, bitstopu
+	
+	COMP s4, 9 ;jezeli to 10 bit ramki, to obsluga parzystosci
+	JUMP Z, parity
+	
+	;tutaj program dochodzi gdy przesylany jest bit pomiedzy 1,  8 ramki, czyli dane
 	TEST s0, %10
 	JUMP Z, zero
 	JUMP NZ, jeden
+	
 	dalej:
-	OUT s1, leds_0
+	ADD s4, 1
+	
 	koniecint:
 	LOAD sF, 0
 	OUT sF, int_status
 	reti enable
+	
 
 ORG $3FF
 JUMP interrupt
