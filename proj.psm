@@ -303,23 +303,12 @@ print_lcd:
 	
 	COMP sC, 17
 	JUMP NZ, end_16
-	LOAD sF, $C0
-	OUT sF, lcd_value
-	OUT sB, lcd_control
-	CALL NOP
-	OUT sA, lcd_control
-	CALL opoznij_50us
+	CALL druga_linia_kursor
 	end_16:
 	
 	COMP sC, 33
 	JUMP NZ, end_56
-	LOAD sF, $80
-	OUT sF, lcd_value
-	OUT sB, lcd_control
-	CALL NOP
-	OUT sA, lcd_control
-	CALL opoznij_50us
-	LOAD sC, 0
+	CALL pierwsza_linia_kursor
 	end_56:
 
 	LOAD sA, %00000010
@@ -343,9 +332,52 @@ backspace_lcd:
 cofnij_kursor:
 	LOAD sA, %00000000
 	LOAD sB, %00000001
+	COMP sC, 0 ; nic nie rob jak poczatek pierwszej lini
+	RET Z
+	COMP sC, 18 ; koniec pierwszej lini, przejdz do drugiej
+		 JUMP NZ, brak_zmiany_lini_kursora_cofnij
+		 CALL koniec_pierwsza_linia_kursor
+		 RET
+	brak_zmiany_lini_kursora_cofnij:
 	SUB sC, 1
 	LOAD sF, $80
 	ADD sF, sC
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+	
+pierwsza_linia_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	LOAD sC, 0
+	LOAD sF, $80
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+
+druga_linia_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	LOAD sC, 18
+	LOAD sF, $C0
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+
+koniec_pierwsza_linia_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	LOAD sC, 17
+	LOAD sF, $80
 	OUT sF, lcd_value
 	OUT sB, lcd_control
 	CALL NOP
