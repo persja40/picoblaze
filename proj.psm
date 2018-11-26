@@ -369,6 +369,22 @@ wprzod_kursor:
 	CALL opoznij_50us
 	RET
 	
+wgore_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	COMP sC, 18 ; nic nie rob jak pierwsza linia
+	RET Z
+	
+	SUB sC, 33
+	LOAD sF, $80
+	ADD sF, sC
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+	
 pierwsza_linia_kursor:
 	LOAD sA, %00000000
 	LOAD sB, %00000001
