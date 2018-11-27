@@ -18,6 +18,7 @@ lcd_value DSOUT $30
 
 LOAD s4, 0 ;dane dotyczace stanu ramki ps/2
 LOAD s5, 0 ;czy przycisk jest puszczany
+LOAD s8, 0 ;czy przytrzymywany jest shift
 
 CALL init_lcd
 
@@ -106,6 +107,8 @@ bitstopuOk:
 	JUMP Z, BACKSPACE
 	COMP s1, $29
 	JUMP Z, SPACE
+	COMP s1, $12 ; LEWY SHIFT
+	JUMP Z, SHIFT
 	LOAD s6, s1
 	JUMP koniecint
 	
@@ -118,7 +121,13 @@ wyswietl:
 	JUMP koniecint
 	
 A:
-	LOAD s6, $41 ;zaladowanie litery A w ascii do rejestru s6
+	TEST s5, %1
+	JUMP NZ, duzeA
+	LOAD s6, $61 ;zaladowanie litery A w ascii do rejestru s6
+	JUMP wyswietl
+	
+duzeA:
+	LOAD s6, $41 ;zaladowanie litery A duzego w ascii do rejestru s6
 	JUMP wyswietl
 	
 B:
@@ -156,11 +165,25 @@ BACKSPACE:
 SPACE:
 	LOAD s6, $20
 	JUMP wyswietl
-	
+
+SHIFT:
+	LOAD s8, %01
+	JUMP koniecint	
 	
 koniecpuszczania:
 	LOAD s5, 0
+	TEST s8, %1
+	CALL NZ, zerujShiftJezeliPuszczony
 	JUMP koniecint
+	
+zerujShiftJezeliPuszczony:
+	COMP s1, $12 ;scancode lewego shifta
+	CALL Z, zerujShift
+	RET
+	
+zerujShift:
+	LOAD s8, 0;
+	RET;
 	
 parity: ;obsluga bitu parzystosci
 	;TEST s1, $FF
