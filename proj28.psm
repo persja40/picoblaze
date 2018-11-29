@@ -1,0 +1,687 @@
+VHDL "ROM_form.vhd", "proj.vhd"
+MEM "proj.mem"
+
+leds_0 DSIO $00 ;port ledy
+
+int_mask DSOUT $E1 ;maska przerwan
+int_status DSIO $E0 ;status przerwan
+
+ps2_out DSOUT $70 ;port wyjsciowy ps2
+ps2 DSIN $70 ;port wejsciowy ps2
+ps2_int_edge DSIO $71 ;wybor typu przerwan
+ps2_int_value DSIO $72 ;wybor zbocza przerwan
+ps2_int_mask DSIO $73 ;maska przerwan
+
+lcd_control DSOUT $31
+lcd_value DSOUT $30
+
+
+LOAD s4, 0 ;dane dotyczace stanu ramki ps/2
+LOAD s5, 0 ;czy przycisk jest puszczany
+LOAD s8, 0 ;czy przytrzymywany jest shift
+
+CALL init_lcd
+
+dane:
+LOAD s1, 0
+LOAD s0, %00000011
+OUT s0, leds_0
+
+ustawienieprzerwan:
+LOAD s0, %00000010 ;zaladowanie przerwan z ps/2
+OUT s0, int_mask
+
+ustawienieczytania:
+LOAD s0, %11
+OUT s0, ps2_out
+LOAD s0, %01 ;zrodlo przerwan z linii ps_clk
+OUT s0, ps2_int_mask
+LOAD s0, %01 ;zbocze dla ps/2, chyba trzeba zmienic na 00
+OUT s0, ps2_int_edge
+LOAD s0, %00
+OUT s0, ps2_int_value
+
+LOAD s5, 10
+
+CALL opoznij_5ms
+CALL opoznij_5ms
+CALL opoznij_5ms
+CALL opoznij_5ms
+LOAD sF, 0
+OUT sF, int_status
+
+EINT
+
+koniec:
+JUMP koniec
+
+zero: SR0 s1 ;otrzymanie 1 z ps_data
+	JUMP dalej
+
+jeden: SR1 s1 ;otrzymanie 0 z ps_data
+	JUMP dalej
+	
+bitstartu: ;obsluga bitu startu
+	TEST s0, %10
+	JUMP Z, bitstartuOk
+	JUMP NZ, koniecint
+	JUMP bitstartuOk
+	
+bitstartuOk:
+	JUMP dalej
+	
+bitstopu: ;obsluga bitu stopu
+	TEST s0, %10
+	JUMP NZ, bitstopuOk
+	JUMP Z, koniecint
+	JUMP bitstopuOk
+	
+bitstopuOk:
+	LOAD s4, 0
+	OUT s1, leds_0
+	TEST s5, %1
+	JUMP NZ, koniecpuszczania
+	COMP s1, $F0 ;jezeli kod F0, to znaczy ze klawisz jest puszczony
+	JUMP Z, puszczamy
+	COMP s1, $1C ;scancode litery A
+	JUMP Z, A
+	COMP s1, $32
+	JUMP Z, B
+	COMP s1, $21
+	JUMP Z, CC
+	COMP s1, $23
+	JUMP Z, D
+	COMP s1, $24
+	JUMP Z, E
+	COMP s1, $2B
+	JUMP Z, F
+	COMP s1, $34
+	JUMP Z, G
+	COMP s1, $33
+	JUMP Z, H
+	COMP s1, $43
+	JUMP Z, I
+	COMP s1, $3B
+	JUMP Z, J
+	COMP s1, $42
+	JUMP Z, K
+	COMP s1, $4B
+	JUMP Z, L
+	COMP s1, $3A
+	JUMP Z, M
+	COMP s1, $31
+	JUMP Z, N
+	COMP s1, $44
+	JUMP Z, O
+	COMP s1, $4D
+	JUMP Z, P
+	COMP s1, $15
+	JUMP Z, Q
+	COMP s1, $2D
+	JUMP Z, R
+	COMP s1, $1B
+	JUMP Z, S
+	COMP s1, $2C
+	JUMP Z, T
+	COMP s1, $3C
+	JUMP Z, U
+	COMP s1, $2A
+	JUMP Z, V
+	COMP s1, $1D
+	JUMP Z, W
+	COMP s1, $22
+	JUMP Z, X
+	COMP s1, $35
+	JUMP Z, Y
+	COMP s1, $1A
+	JUMP Z, ZZ
+	COMP s1, $45
+	JUMP Z, ZER
+	COMP s1, $16
+	JUMP Z, JED
+	COMP s1, $1E
+	JUMP Z, DWA
+	COMP s1, $26
+	JUMP Z, TRZ
+	COMP s1, $25
+	JUMP Z, CZT
+	COMP s1, $2E
+	JUMP Z, PIE
+	COMP s1, $36
+	JUMP Z, SZE
+	COMP s1, $3D
+	JUMP Z, SIE
+	COMP s1, $3E
+	JUMP Z, OSI
+	COMP s1, $46
+	JUMP Z, DZI
+	COMP s1, $66	
+	JUMP Z, BACKSPACE
+	COMP s1, $29
+	JUMP Z, SPACE
+	COMP s1, $12 ; LEWY SHIFT
+	JUMP Z, SHIFT
+	COMP s1, $5A
+	JUMP Z, ENTER
+	COMP s1, $6B
+	JUMP Z, LARROW
+	COMP s1, $74
+	JUMP Z, RARROW
+	LOAD s6, s1
+	JUMP koniecint
+	
+puszczamy:
+	LOAD s5, 1
+	JUMP koniecint
+
+wyswietl:
+	CALL print_lcd;wyswietlenie rejestru s6 na ekran
+	JUMP koniecint
+	
+A:
+	LOAD s6, 97
+	JUMP litera
+B:
+	LOAD s6, 98
+	JUMP litera
+CC:
+	LOAD s6, 99
+	JUMP litera
+D:
+	LOAD s6, 100
+	JUMP litera
+E:
+	LOAD s6, 101
+	JUMP litera
+F:
+	LOAD s6, 102
+	JUMP litera
+G:
+	LOAD s6, 103
+	JUMP litera
+H:
+	LOAD s6, 104
+	JUMP litera
+I:
+	LOAD s6, 105
+	JUMP litera
+J:
+	LOAD s6, 106
+	JUMP litera
+K:
+	LOAD s6, 107
+	JUMP litera
+L:
+	LOAD s6, 108
+	JUMP litera
+M:
+	LOAD s6, 109
+	JUMP litera
+N:
+	LOAD s6, 110
+	JUMP litera
+O:
+	LOAD s6, 111
+	JUMP litera
+P:
+	LOAD s6, 112
+	JUMP litera
+Q:
+	LOAD s6, 113
+	JUMP litera
+R:
+	LOAD s6, 114
+	JUMP litera
+S:
+	LOAD s6, 115
+	JUMP litera
+T:
+	LOAD s6, 116
+	JUMP litera
+U:
+	LOAD s6, 117
+	JUMP litera
+V:
+	LOAD s6, 118
+	JUMP litera
+W:
+	LOAD s6, 119
+	JUMP litera
+X:
+	LOAD s6, 120
+	JUMP litera
+Y:
+	LOAD s6, 121
+	JUMP litera
+ZZ:
+	LOAD s6, 122
+	JUMP litera
+ZER:
+	TEST s8, %1
+	JUMP NZ, ZERd
+	LOAD s6, 48
+	JUMP wyswietl
+ZERd:
+	LOAD s6, 41
+	JUMP wyswietl
+JED:
+	TEST s8, %1
+	JUMP NZ, JEDd
+	LOAD s6, 49
+	JUMP wyswietl
+JEDd:
+	LOAD s6, 33
+	JUMP wyswietl
+DWA:
+	TEST s8, %1
+	JUMP NZ, DWAd
+	LOAD s6, 50
+	JUMP wyswietl
+DWAd:
+	LOAD s6, 64
+	JUMP wyswietl
+TRZ:
+	TEST s8, %1
+	JUMP NZ, TRZd
+	LOAD s6, 51
+	JUMP wyswietl
+TRZd:
+	LOAD s6, 35
+	JUMP wyswietl
+CZT:
+	TEST s8, %1
+	JUMP NZ, CZTd
+	LOAD s6, 52
+	JUMP wyswietl
+CZTd:
+	LOAD s6, 36
+	JUMP wyswietl
+PIE:
+	TEST s8, %1
+	JUMP NZ, PIEd
+	LOAD s6, 53
+	JUMP wyswietl
+PIEd:
+	LOAD s6, 37
+	JUMP wyswietl
+SZE:
+	TEST s8, %1
+	JUMP NZ, SZEd
+	LOAD s6, 54
+	JUMP wyswietl
+SZEd:
+	LOAD s6, 94
+	JUMP wyswietl
+SIE:
+	TEST s8, %1
+	JUMP NZ, SIEd
+	LOAD s6, 55
+	JUMP wyswietl
+SIEd:
+	LOAD s6, 38
+	JUMP wyswietl
+OSI:
+	TEST s8, %1
+	JUMP NZ, OSId
+	LOAD s6, 56
+	JUMP wyswietl
+OSId:
+	LOAD s6, 42
+	JUMP wyswietl
+DZI:
+	TEST s8, %1
+	JUMP NZ, DZId
+	LOAD s6, 57
+	JUMP wyswietl
+DZId:
+	LOAD s6, 40
+	JUMP wyswietl
+	
+litera:
+	TEST s8, %1
+	CALL NZ, duze
+	JUMP wyswietl	
+
+duze:
+	SUB s6, 32
+	RET
+
+BACKSPACE:
+	CALL backspace_lcd
+	JUMP koniecint
+
+SPACE:
+	LOAD s6, $20
+	JUMP wyswietl
+
+SHIFT:
+	LOAD s8, %01
+	JUMP koniecint	
+
+ENTER:
+	LOAD sD, sC
+	COMP sD, 16
+	CALL C, druga_linia_kursor
+	COMP sD, 16
+	CALL NC, pierwsza_linia_kursor
+	JUMP koniecint	
+
+LARROW:
+	CALL cofnij_kursor
+	JUMP koniecint
+
+RARROW:
+	CALL wprzod_kursor
+	JUMP koniecint
+	
+koniecpuszczania:
+	LOAD s5, 0
+	TEST s8, %1
+	CALL NZ, zerujShiftJezeliPuszczony
+	JUMP koniecint
+	
+zerujShiftJezeliPuszczony:
+	COMP s1, $12 ;scancode lewego shifta
+	CALL Z, zerujShift
+	RET
+	
+zerujShift:
+	LOAD s8, 0;
+	RET;
+	
+parity: ;obsluga bitu parzystosci
+	TEST s1, $FF
+	JUMP NC, parityone
+	JUMP C, parityzero
+	JUMP parityOk
+	
+parityone:
+	TEST s0, %10
+	JUMP NZ, parityOk
+	JUMP Z, koniecint
+	
+parityzero:
+	TEST s0, %10
+	JUMP Z, parityOk
+	JUMP NZ, koniecint	
+
+parityOk:
+	JUMP dalej
+
+interrupt:
+
+	IN s0, ps2 ;pobranie bitu
+	
+	COMP s4, 0 ;jezeli to pierwszy bit ramki, to obsluga bitu startu
+	JUMP Z, bitstartu
+	
+	COMP s4, 10 ;jezeli to 11 bit ramki, to obsluga bitu stopu
+	JUMP Z, bitstopu
+	
+	COMP s4, 9 ;jezeli to 10 bit ramki, to obsluga parzystosci
+	JUMP Z, parity
+	
+	;tutaj program dochodzi gdy przesylany jest bit pomiedzy 1,  8 ramki, czyli dane
+	TEST s0, %10
+	JUMP Z, zero
+	JUMP NZ, jeden
+	
+	dalej:
+	ADD s4, 1
+	
+	koniecint:
+	LOAD sF, 0
+	OUT sF, int_status
+	reti enable
+
+init_lcd:
+	LOAD s0, $38
+
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_5ms
+	
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_100us
+	
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_50us
+	
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_5ms
+	
+	LOAD s0, $06
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_50us
+	
+	LOAD s0, $0E
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_50us
+	
+	LOAD s0, $01
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_5ms
+
+	LOAD s0, $80
+	OUT s0, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_50us
+	
+	LOAD sA, %00000010
+	LOAD sB, %00000011
+	
+	CALL opoznij_50us
+	LOAD sC, 0
+	RET
+
+print_lcd:
+	
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	
+	COMP sC, 16
+	JUMP NZ, end_16
+	CALL druga_linia_kursor
+	end_16:
+	
+	COMP sC, 32
+	JUMP NZ, end_56
+	CALL pierwsza_linia_kursor
+	end_56:
+
+	LOAD sA, %00000010
+	LOAD sB, %00000011
+
+	OUT s6, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	
+	CALL opoznij_50us
+
+	ADD sC, 1
+
+	RET
+
+backspace_lcd:
+	CALL cofnij_kursor
+	LOAD s6, $20
+	CALL print_lcd
+	CALL cofnij_kursor
+	RET
+	
+cofnij_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	COMP sC, 0 ; nic nie rob jak poczatek pierwszej lini
+		CALL Z, loadSCEND	
+
+	SUB sC, 1
+	COMP sC, 16
+		CALL C, setF80
+		CALL NC, setFC0
+	ADD sF, sC
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+
+loadSCEND:
+	LOAD sC, 32
+	RET
+	
+wprzod_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	COMP sC, 31 ; nic nie rob jak koniec drugiej lini
+	JUMP Z, dopierwszej
+	ADD sC, 1
+	LOAD sE, sC
+	COMP sC, 16
+		CALL C, setF80
+		CALL NC, setFC0
+	ADD sF, sC
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+
+dopierwszej:
+	CALL pierwsza_linia_kursor
+	RET
+
+setF80:
+	LOAD sF, $80
+	RET
+
+setFC0:
+	LOAD sF, $C0
+	SUB sF, 16
+	RET
+
+odejmijodsE:
+	SUB sE, 17
+	RET
+	
+wgore_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	COMP sC, 18 ; nic nie rob jak pierwsza linia
+	RET Z
+	
+	SUB sC, 33
+	LOAD sF, $80
+	ADD sF, sC
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+	
+pierwsza_linia_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	LOAD sC, 0
+	LOAD sF, $80
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+
+druga_linia_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	LOAD sC, 16
+	LOAD sF, $C0
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+
+koniec_pierwsza_linia_kursor:
+	LOAD sA, %00000000
+	LOAD sB, %00000001
+	LOAD sC, 17
+	LOAD sF, $80
+	OUT sF, lcd_value
+	OUT sB, lcd_control
+	CALL NOP
+	OUT sA, lcd_control
+	CALL opoznij_50us
+	RET
+
+NOP:
+LOAD s0, s0
+LOAD s0, s0
+LOAD s0, s0
+RET
+
+opoznij_1us_const EQU 24
+opoznij_1us: LOAD sF, opoznij_1us_const
+czekaj: SUB  sF, 01
+JUMP NZ, czekaj
+RET
+
+opoznij_50us: LOAD sE, 50 ;36d
+czekaj_50us: CALL opoznij_1us
+SUB  sE,01
+JUMP NZ, czekaj_50us
+RET
+
+opoznij_100us: LOAD sE, 100 ;36d
+czekaj_100us: CALL opoznij_1us
+SUB  sE,01
+JUMP NZ, czekaj_100us
+RET
+
+opoznij_5ms: LOAD sD, 50 ;25d
+czekaj_5ms: CALL opoznij_100us
+SUB  sD,01
+JUMP NZ, czekaj_5ms
+RET
+	
+
+ORG $3FF
+JUMP interrupt
